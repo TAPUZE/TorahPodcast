@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Player: The 'Bet' Unveiled</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior-y: contain; /* Prevents pull-to-refresh on mobile when scrolling script */
+        }
+        .playing {
+            background-color: #f0f9ff; /* Light blue background for currently playing paragraph */
+            font-weight: 600;
+        }
+        /* Custom scrollbar for script area */
+        #scriptContent::-webkit-scrollbar {
+            width: 8px;
+        }
+        #scriptContent::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        #scriptContent::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        #scriptContent::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Basic modal style */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 100; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0,0,0); /* Fallback color */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 500px;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        .modal-close-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-slate-700 text-slate-100 flex flex-col items-center justify-center min-h-screen p-4 selection:bg-sky-500 selection:text-white">
+
+    <div class="bg-slate-800 shadow-2xl rounded-xl p-6 md:p-8 w-full max-w-3xl">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-sky-400">Podcast Player</h1>
+            <p class="text-lg text-sky-300 mt-1">The "Bet" Unveiled – Purpose in Every Word</p>
+        </header>
+
+        <div id="alert-modal" class="modal">
+            <div class="modal-content bg-slate-700 text-slate-100 shadow-lg rounded-lg">
+                <p id="alert-message" class="text-lg"></p>
+                <button id="alert-close-button" class="modal-close-button bg-sky-500 hover:bg-sky-600 transition-colors">OK</button>
+            </div>
+        </div>
+
+        <div id="controls" class="flex flex-wrap justify-center items-center gap-3 mb-6">
+            <button id="playBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-150 ease-in-out transform hover:scale-105 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg>
+                Play
+            </button>
+            <button id="pauseBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-150 ease-in-out transform hover:scale-105 flex items-center gap-2" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 0-.75.75V18a.75.75 0 0 0 .75.75h1.5a.75.75 0 0 0 .75-.75V6a.75.75 0 0 0-.75-.75h-1.5Zm9 0a.75.75 0 0 0-.75.75V18a.75.75 0 0 0 .75.75h1.5a.75.75 0 0 0 .75-.75V6a.75.75 0 0 0-.75-.75h-1.5Z" clip-rule="evenodd" /></svg>
+                Pause
+            </button>
+            <button id="stopBtn" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-all duration-150 ease-in-out transform hover:scale-105 flex items-center gap-2" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clip-rule="evenodd" /></svg>
+                Stop
+            </button>
+        </div>
+
+        <div class="mb-4">
+            <label for="voiceSelect" class="block text-sm font-medium text-slate-300 mb-1">Select Voice:</label>
+            <select id="voiceSelect" class="w-full p-2.5 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:ring-sky-500 focus:border-sky-500"></select>
+        </div>
+        
+        <div class="mb-4">
+            <label for="speedControl" class="block text-sm font-medium text-slate-300 mb-1">Playback Speed: <span id="speedValue">1</span>x</label>
+            <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-sky-500">
+        </div>
+
+        <div id="scriptContainer" class="bg-slate-800/50 p-4 md:p-6 rounded-lg shadow-inner">
+            <h2 class="text-xl font-semibold text-sky-400 mb-3">Podcast Script</h2>
+            <div id="scriptContent" class="h-64 md:h-96 overflow-y-auto space-y-3 text-slate-300 leading-relaxed pr-2">
+                </div>
+        </div>
+         <footer class="mt-6 text-center text-xs text-slate-400">
+            <p>Note: Music cues are represented by timed pauses. Voice quality depends on your browser.</p>
+        </footer>
+    </div>
+
+    <script>
+        const scriptText = `
+**Episode Title:** The Misunderstood Prefix: How "For the Sake Of" Changes Everything
+
+**(Intro Music: Upbeat, Introspective, fades after 15 seconds)**
+
+**Host:** Shalom and welcome to "Ancient Paths, New Understandings." I'm your host, and today we embark on a linguistic and theological journey that promises to reshape our understanding of the most foundational texts of human civilization: the Hebrew Scriptures. We'll be diving deep into a tiny, often overlooked Hebrew prefix – the letter "Bet" (בְּ) – and uncovering a meaning that, once recognized, infuses the biblical narrative with a profound sense of purpose.
+
+Our core thesis today is this: the prefix בְּ, especially when vocalized with a *shva* and preceding key nouns, doesn't just mean "in," "at," or "with," as it's commonly translated. Instead, it consistently signifies **"for," "for the sake of," "in service of," or "for the purpose of."** This isn't just a minor grammatical tweak; it has monumental implications for how we read Genesis, how we understand the nature of Elohim, and how we perceive the very fabric of creation as described in the Torah.
+
+**(Short musical interlude - 3 seconds)**
+
+**Host:** So, let's start with the basics. In Biblical Hebrew, the letter בְּ (Bet with a shva) is incredibly common. Traditional translations often render it spatially or temporally. But what if that's an oversimplification? What if its primary role, in many crucial contexts, is to signal intention and purpose?
+
+Consider a few examples from the Tanakh:
+In Psalm 89, verse 15, we read: *“בְּצֶדֶק תִּכּוֹנַן כִּסְאֶךָ.”* Often translated as "Your throne is established *in* righteousness." But if בְּ means "for the sake of," it becomes: “**For righteousness** shall your throne be established.” The meaning shifts from a static quality to a foundational purpose.
+Or Proverbs 16, verse 6: *“בְּחֶסֶד וֶאֱמֶת יְכֻפַּר עָוֹן.”* Usually, "By mercy and truth iniquity is atoned." But with our understanding: “**Through (or for the sake of) mercy and truth** iniquity is atoned.” Again, the purpose is highlighted.
+
+This isn't about forcing a new meaning, but about listening more closely to the inherent logic of the Hebrew language, a logic that, as we'll see, is supported by traditional Jewish exegesis.
+
+**(Short musical interlude - 3 seconds)**
+
+**Host:** Now, let's turn to the most famous instance: the very first word of the Torah, **בְּרֵאשִׁית** (Bereshit), in Genesis 1:1. For centuries, this has been translated as "In the beginning." But if בְּ signifies purpose, the entire verse transforms.
+
+Let's break it down:
+The prefix **בְּ** – "for," "for the sake of."
+The root **רֵאשׁ** (Resh) implies headship, leadership, or highest wisdom. It’s not primarily about time, but about cognitive or sovereign preeminence. Think of “רָאשֵׁי הָעָם” (leaders of the people) – highest in rank, not first chronologically.
+So, בְּרֵאשִׁית becomes: **“For wisdom’s sake,”** or **“For the sake of headship/first-principle purpose.”**
+
+This reading aligns powerfully with Midrashic traditions, such as in *Bereshit Rabbah*, which states: "*Reshit is Torah, Reshit is Israel, Reshit is wisdom.*" The creation, then, is profoundly teleological – done *for* wisdom, *for* Torah, *for* the righteous.
+
+And what about the rest of the verse? *“בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ.”*
+If בְּרֵאשִׁית means "For wisdom's sake," then who are the **אֱלֹהִים** (Elohim)? Our thesis argues that Elohim, in this context and many others, doesn't refer to the personal name of the unnamable Creator. Rather, it refers to **operative powers, natural forces, domains of authority, or agents of function.** The text itself distinguishes between ה' (Hashem), the ineffable Name, and Elohim. As Deuteronomy 29:28 can be read: “The hidden things belong to ה'. Elohim (the powers) are what is revealed to us.”
+
+So, Genesis 1:1 isn't saying "In the beginning, God created..." It's declaring something far more profound about structure and purpose: **“For wisdom’s sake, the Powers (Elohim) created/ordered the heavens and the earth.”**
+
+This is further supported by the verb **שִׁית** (Sheet), which, as argued, consistently means to **set in place, to appoint, to establish dominion, or to spread control.** It’s about sovereign imposition of function. The universe isn't just physically made; it's *governed into existence*, structured by appointed domains of power.
+
+The opening of the Torah, then, isn't a simple chronological statement. It's an ontological declaration: **For the purpose of wisdom, the One established the powers, which in turn structured the cosmos.**
+
+**(Short musical interlude - 5 seconds)**
+
+**Host:** This purposeful reading of בְּ isn't confined to Genesis. It echoes throughout the Scriptures.
+
+Let's look at a few more examples:
+* In Genesis 6:18, concerning the covenant with Noah: *“וַהֲקִמֹתִי אֶת־בְּרִיתִי אִתָּךְ.”* Instead of "I will establish My covenant *with* you," it becomes "I will raise *for* covenant with you." The covenant is the purpose.
+* In Exodus 13, regarding the firstborn: *“קַדֶּשׁ־לִי כָּל־בְּכוֹר.”* Not just "Sanctify to Me every firstborn," but "Sanctify to Me every one *for primacy*." It’s about a designated role.
+* Isaiah 12:3: *“וּשְׁאַבְתֶּם־מַיִם בְּשָׂשׂוֹן.”* "You shall draw water *for* joy," not merely *with* joy. Joy is the intended outcome.
+* Isaiah 45:4: *“בְּשִׁמְךָ אֲקְרָאֶךָּ.”* "I call you *for* your name," indicating an appointment *for* a mission tied to the meaning and purpose of that name.
+* Psalm 126:5: *“הַזֹּרְעִים בְּדִמְעָה בְּרִנָּה יִקְצֹרוּ.”* "Those who sow *for* tears (or in a state that leads to tears) will reap *for* joy." It shows causality and transformation.
+* And Psalm 91:1: *“יֹשֵׁב בְּסֵתֶר עֶלְיוֹן בְּצֵל שַׁדַּי יִתְלוֹנָן.”* "Dwelling *for* the secret purpose of the Most High, *for* the protection of the Almighty." It becomes mission-oriented, not just location-based.
+
+This consistent pattern suggests a universe infused with divine intention, where actions and establishments are *for* specific purposes, guided by wisdom.
+
+**(Short musical interlude - 3 seconds)**
+
+**Host:** Recognizing this purposeful "Bet" has significant ramifications. It challenges long-held interpretations, particularly those influenced by what might be termed Hellenistic or later theological filters.
+
+For instance, the Documentary Hypothesis, which posits multiple authors for the Torah based on differing divine names, loses some of its footing. If "Elohim" refers to powers and "Hashem" to the ultimate source of these powers, then their usage isn't contradictory but reflects a deliberate philosophical and theological distinction: the Creator as unknowable essence, and Elohim as knowable operations.
+
+This understanding also addresses claims from some Christian or Islamic apologists that alleged inconsistencies in divine names indicate biblical corruption. Instead, we see a sophisticated, categorical use of terms.
+
+Furthermore, this reading emphasizes the internal coherence and integrity of the Hebrew text. While archaeological findings, such as those at Jericho and Lachish, support the Bible's historical accuracy in certain narratives, our primary focus here is linguistic and textual. The work of scholars like Professor Yoel Elitzur, who delve into the lexical nuances of ancient Hebrew, often affirms the consistent inner logic of the text, which resonates with our thesis about the functional nature of terms like "Elohim" and the prefix "Bet."
+
+**(Short musical interlude - 3 seconds)**
+
+**Host:** Now, one might ask, how strong is this thesis? After rigorous testing, examining the prefix בְּ with a shva across the Torah, Prophets, and Writings, and cross-referencing with traditional Jewish hermeneutics, including Kabbalistic insights which often read Hebrew letters as directional energies or functions, the thesis holds remarkable textual and conceptual integrity.
+
+No counterexample we've tested *requires* the rendering of בְּ־ as merely "in" or "by" when "for" or "for the sake of" fits as well, or, more often, significantly better, clarifying the text's intent. The focus on בְּ־ followed by a shva identifies a consistent grammatical signal. Any rebuttal process, when held to the rigorous standards of Hebrew grammatical precision and internal biblical consistency, ultimately reinforces this thesis. Objections often arise from external systems or translations that may have inadvertently flattened the Hebrew's conceptual depth.
+
+**(Short musical interlude - 5 seconds)**
+
+**Host:** So, what is the grand takeaway? We are not dealing with poetic myth or mere chronological reporting in these ancient texts. We are standing before a layered structure of supreme intelligence. The Creator, the ultimate source, established Wisdom as a foundational principle. For the sake of this Wisdom, the Powers (Elohim) were brought forth and appointed. And through these Powers, operating with purpose, the world was structured, ordered, and, in a sense, *ruled into existence*.
+
+The opening of the Torah, then, boldly declares: **“For wisdom, the dominions of power were established.”**
+The term Elohim speaks of the powers we observe, study, and marvel at—but behind them, always, is the One, the unnamable source. And the verb "Sheet" (שִׁית) speaks not of laying down matter, but of imposing order and establishing rule.
+
+This re-reading invites us to return to the Hebrew text with a renewed reverence, not just for what it says, but for what it *meant* – to perceive a universe saturated with divine purpose, where every element, every word, can point us toward that originating intention. It’s a shift from a passive "in" to an active, purposeful "for."
+
+May we all continue to seek understanding, to listen closely to the echoes of ancient wisdom, and to find purpose in the words that have shaped millennia.
+
+**(Outro Music: Thoughtful, introspective, fades in and plays to end)**
+
+**Host:** Thank you for joining me on "Ancient Paths, New Understandings." Until next time, may your studies be illuminating.
+`;
+
+        const scriptContentDiv = document.getElementById('scriptContent');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const speedControl = document.getElementById('speedControl');
+        const speedValueSpan = document.getElementById('speedValue');
+        
+        const alertModal = document.getElementById('alert-modal');
+        const alertMessage = document.getElementById('alert-message');
+        const alertCloseButton = document.getElementById('alert-close-button');
+
+        let speechSynthesis = window.speechSynthesis;
+        let voices = [];
+        let utterances = [];
+        let currentUtteranceIndex = 0;
+        let currentParagraphElement = null;
+
+        function showAlert(message) {
+            alertMessage.textContent = message;
+            alertModal.style.display = "block";
+        }
+
+        alertCloseButton.onclick = function() {
+            alertModal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target == alertModal) {
+                alertModal.style.display = "none";
+            }
+        }
+
+
+        function populateVoiceList() {
+            if(typeof speechSynthesis === 'undefined') {
+                showAlert("Sorry, your browser does not support speech synthesis. Try a different browser like Chrome or Edge.");
+                playBtn.disabled = true;
+                pauseBtn.disabled = true;
+                stopBtn.disabled = true;
+                voiceSelect.disabled = true;
+                speedControl.disabled = true;
+                return;
+            }
+
+            voices = speechSynthesis.getVoices();
+            voiceSelect.innerHTML = ''; // Clear existing options
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (voice.default) {
+                    option.textContent += ' -- DEFAULT';
+                }
+                option.setAttribute('data-lang', voice.lang);
+                option.setAttribute('data-name', voice.name);
+                option.value = i;
+                voiceSelect.appendChild(option);
+            });
+             // Try to select a preferred English voice
+            let preferredVoiceIndex = voices.findIndex(voice => voice.lang.startsWith('en') && voice.name.toLowerCase().includes('google') || voice.name.toLowerCase().includes('natural') || voice.default);
+            if (preferredVoiceIndex === -1) preferredVoiceIndex = voices.findIndex(voice => voice.lang.startsWith('en'));
+            if (preferredVoiceIndex !== -1) voiceSelect.value = preferredVoiceIndex;
+
+        }
+
+        function loadScript() {
+            const paragraphs = scriptText.trim().split(/\n\s*\n/); // Split by blank lines
+            scriptContentDiv.innerHTML = ''; // Clear previous script
+            utterances = []; // Clear previous utterances
+
+            paragraphs.forEach((paraText, index) => {
+                const p = document.createElement('p');
+                p.textContent = paraText;
+                p.id = `para-${index}`;
+                
+                // Handle bold text for display (simple markdown-like **bold**)
+                p.innerHTML = paraText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                scriptContentDiv.appendChild(p);
+
+                // Prepare utterance, removing visual cues for speech
+                let speechText = paraText;
+                if (speechText.startsWith('**Episode Title:**')) {
+                    speechText = speechText.replace('**Episode Title:**', 'Episode Title:');
+                }
+                speechText = speechText.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove bold markers for speech
+                speechText = speechText.replace(/\(\s*(Intro Music|Short musical interlude|Outro Music)[\s\S]*?\)/gi, '').trim(); // Remove music cues for speech
+
+                if (speechText) { // Only add utterance if there's text to speak
+                    utterances.push({text: speechText, element: p, originalText: paraText});
+                }
+            });
+        }
+        
+        function playNextUtterance() {
+            if (currentUtteranceIndex >= utterances.length) {
+                stopSpeech(); // Reached end of script
+                return;
+            }
+
+            const current = utterances[currentUtteranceIndex];
+            const originalText = current.originalText.toLowerCase();
+            let pauseDuration = 0;
+
+            if (originalText.includes("(intro music")) {
+                pauseDuration = 10000; // 10 seconds for intro (reduced from 15 for snappier demo)
+            } else if (originalText.includes("(short musical interlude - 3 seconds)")) {
+                pauseDuration = 3000;
+            } else if (originalText.includes("(short musical interlude - 5 seconds)")) {
+                pauseDuration = 5000;
+            } else if (originalText.includes("(outro music")) {
+                pauseDuration = 7000; // 7 seconds for outro
+            }
+            
+            // Highlight current paragraph
+            if (currentParagraphElement) {
+                currentParagraphElement.classList.remove('playing');
+            }
+            currentParagraphElement = current.element;
+            currentParagraphElement.classList.add('playing');
+            currentParagraphElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            if (pauseDuration > 0) {
+                // If it's a music cue, pause then play next
+                // Display the music cue text during pause
+                current.element.classList.add('italic', 'text-sky-400'); // Style music cues
+                setTimeout(() => {
+                    current.element.classList.remove('italic', 'text-sky-400');
+                    if (speechSynthesis.speaking || speechSynthesis.pending) { // Check if still supposed to be playing
+                         currentUtteranceIndex++;
+                         playNextUtterance();
+                    }
+                }, pauseDuration);
+            } else if (current.text.trim() !== "") {
+                const utterance = new SpeechSynthesisUtterance(current.text);
+                const selectedVoiceIndex = voiceSelect.value;
+                if (voices[selectedVoiceIndex]) {
+                    utterance.voice = voices[selectedVoiceIndex];
+                }
+                utterance.rate = parseFloat(speedControl.value);
+
+                utterance.onend = () => {
+                    if (currentParagraphElement) {
+                       currentParagraphElement.classList.remove('playing');
+                    }
+                    currentUtteranceIndex++;
+                    if (speechSynthesis.speaking || speechSynthesis.pending || playBtn.disabled) { // Check if we should continue
+                        playNextUtterance();
+                    }
+                };
+                utterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance.onerror', event);
+                    showAlert(`Speech error: ${event.error}. Try a different voice or refresh.`);
+                    stopSpeech();
+                };
+                speechSynthesis.speak(utterance);
+            } else {
+                // If the utterance text is empty (e.g. it was only a music cue), skip to next
+                currentUtteranceIndex++;
+                playNextUtterance();
+            }
+        }
+
+
+        playBtn.addEventListener('click', () => {
+            if (speechSynthesis.paused && (speechSynthesis.speaking || speechSynthesis.pending)) {
+                speechSynthesis.resume();
+            } else {
+                speechSynthesis.cancel(); // Clear any previous speech
+                currentUtteranceIndex = 0; // Start from beginning
+                playNextUtterance();
+            }
+            playBtn.disabled = true;
+            pauseBtn.disabled = false;
+            stopBtn.disabled = false;
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            if (speechSynthesis.speaking && !speechSynthesis.paused) {
+                speechSynthesis.pause();
+                playBtn.disabled = false; // Enable play to allow resume
+                playBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg> Resume';
+                pauseBtn.disabled = true;
+            }
+        });
+        
+        function stopSpeech() {
+            speechSynthesis.cancel();
+            if (currentParagraphElement) {
+                currentParagraphElement.classList.remove('playing');
+            }
+            currentUtteranceIndex = 0;
+            currentParagraphElement = null;
+            playBtn.disabled = false;
+            playBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg> Play';
+            pauseBtn.disabled = true;
+            stopBtn.disabled = true;
+        }
+
+        stopBtn.addEventListener('click', stopSpeech);
+
+        speedControl.addEventListener('input', (e) => {
+            speedValueSpan.textContent = parseFloat(e.target.value).toFixed(1);
+            // If speaking, might need to stop and restart to apply speed, or it might apply to next utterance
+            if (speechSynthesis.speaking) {
+                // Some browsers might apply rate change mid-speech, others might not.
+                // For simplicity, this example applies it to the next utterance.
+                // To apply immediately, one would need to cancel and restart current utterance.
+            }
+        });
+
+        // Initial setup
+        loadScript();
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+        
+        // Safety check for browsers that don't fire onvoiceschanged or fire it too early
+        setTimeout(() => {
+            if (voices.length === 0) {
+                populateVoiceList();
+            }
+            if (voices.length === 0 && typeof speechSynthesis !== 'undefined') {
+                 showAlert("No voices available or speech synthesis failed to initialize. Please try refreshing the page or using a different browser.");
+            }
+        }, 500);
+
+
+    </script>
+</body>
+</html>
